@@ -14,7 +14,7 @@ import webbrowser
 # Configuration
 CONFIG_FILE = "wormgpt_config.json"
 PROMPT_FILE = "system-prompt.txt"
-DEFAULT_API_KEY = ""
+DEFAULT_API_KEY = "sk-15b0ddf886024792901ccc7123501623"
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-chat"
 SITE_URL = "https://github.com/00x0kafyy/worm-ai"
