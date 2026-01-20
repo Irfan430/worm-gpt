@@ -1,6 +1,10 @@
 {
-  "api_key": "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)",
-  "base_url": "https://openrouter.ai/api/v1",
-  "model": "deepseek/deepseek-chat-v3-0324:free",
-  "language": "English"
+  "api_key": "sk-15b0ddf886024792901ccc7123501623",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-chat",
+  "language": "English",
+  "temperature": 0.7,
+  "webui_port": 5000,
+  "webui_enabled": false,
+  "stream": false
 }
