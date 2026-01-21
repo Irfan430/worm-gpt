@@ -1,312 +1,158 @@
+
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WormGPT Pro - AI Assistant</title>
+    <title>WormGPT - AI Assistant</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/css.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fas fa-robot"></i>
-                    <h1>WormGPT</h1>
-                    <span class="badge">PRO</span>
-                </div>
-                <button class="btn-new-chat" id="newChatBtn">
+                <h1><i class="fas fa-robot"></i> WormGPT</h1>
+                <p class="subtitle">DeepSeek AI Assistant</p>
+            </div>
+            
+            <div class="new-chat-btn">
+                <button id="newChatBtn">
                     <i class="fas fa-plus"></i> New Chat
                 </button>
             </div>
-
-            <!-- Conversations List -->
-            <div class="conversations-list">
-                <h3><i class="fas fa-history"></i> Conversations</h3>
-                <div id="conversationsContainer">
-                    <div class="conversation-item active" data-id="new">
-                        <i class="fas fa-plus"></i>
-                        <span>New Chat</span>
-                    </div>
-                    <!-- Conversations will be loaded here -->
-                </div>
+            
+            <div class="conversations-list" id="conversationsList">
+                <!-- Conversations will be loaded here -->
             </div>
-
-            <!-- Model Info -->
-            <div class="model-info">
-                <div class="info-item">
-                    <i class="fas fa-microchip"></i>
-                    <span>Model: <strong id="currentModel">deepseek-chat</strong></span>
-                </div>
-                <div class="info-item">
-                    <i class="fas fa-database"></i>
-                    <span>Memory: <strong id="memoryStatus">Active</strong></span>
-                </div>
-                <div class="status-indicator">
-                    <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText">Connected</span>
-                </div>
-            </div>
-
-            <!-- Settings Button -->
+            
             <div class="sidebar-footer">
-                <button class="btn-settings" id="settingsBtn">
+                <div class="user-info">
+                    <i class="fas fa-user"></i>
+                    <span>User</span>
+                </div>
+                <button id="settingsBtn" class="settings-btn">
                     <i class="fas fa-cog"></i> Settings
                 </button>
             </div>
         </div>
-
+        
         <!-- Main Chat Area -->
         <div class="main-content">
-            <!-- Chat Header -->
             <div class="chat-header">
-                <div class="header-left">
-                    <h2 id="chatTitle">New Chat</h2>
-                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
-                        <div class="dots">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-                        <span>WormGPT is typing...</span>
-                    </div>
+                <div class="chat-title" id="chatTitle">
+                    <i class="fas fa-comments"></i> New Conversation
                 </div>
-                <div class="header-right">
-                    <button class="btn-icon" id="clearChatBtn" title="Clear Chat">
+                <div class="chat-actions">
+                    <button id="clearChatBtn" title="Clear Chat">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <button class="btn-icon" id="copyChatBtn" title="Copy All">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                    <button class="btn-icon" id="exportChatBtn" title="Export">
+                    <button id="exportChatBtn" title="Export Chat">
                         <i class="fas fa-download"></i>
                     </button>
-                    <div class="model-selector">
-                        <select id="modelSelect">
-                            <option value="deepseek-chat">DeepSeek Chat</option>
-                            <option value="deepseek-coder">DeepSeek Coder</option>
-                        </select>
-                    </div>
                 </div>
             </div>
-
-            <!-- Messages Container -->
+            
             <div class="messages-container" id="messagesContainer">
-                <!-- Welcome Message -->
+                <!-- Messages will appear here -->
                 <div class="welcome-message">
-                    <div class="welcome-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h1>Welcome to WormGPT Pro</h1>
-                    <p>Your intelligent AI assistant with conversation memory</p>
-                    
-                    <div class="features-grid">
-                        <div class="feature-card">
-                            <i class="fas fa-brain"></i>
-                            <h3>Conversation Memory</h3>
-                            <p>Remembers previous conversations in separate files</p>
-                        </div>
-                        <div class="feature-card">
-                            <i class="fas fa-code"></i>
-                            <h3>Code Highlighting</h3>
-                            <p>Beautiful syntax highlighting for code blocks</p>
-                        </div>
-                        <div class="feature-card">
+                    <h2><i class="fas fa-robot"></i> Welcome to WormGPT</h2>
+                    <p>Start a conversation by typing your message below.</p>
+                    <div class="features">
+                        <div class="feature">
                             <i class="fas fa-bolt"></i>
-                            <h3>Real-time Streaming</h3>
-                            <p>Watch responses appear character by character</p>
+                            <span>Real-time Streaming</span>
                         </div>
-                        <div class="feature-card">
-                            <i class="fas fa-infinity"></i>
-                            <h3>Unlimited Tokens</h3>
-                            <p>No artificial limits on conversation length</p>
+                        <div class="feature">
+                            <i class="fas fa-code"></i>
+                            <span>Code Highlighting</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-history"></i>
+                            <span>Conversation Memory</span>
                         </div>
                     </div>
                 </div>
-                <!-- Messages will be appended here -->
             </div>
-
-            <!-- Input Area -->
-            <div class="input-area">
-                <div class="input-tools">
-                    <button class="tool-btn" id="attachFileBtn" title="Attach File">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
-                    <button class="tool-btn" id="voiceInputBtn" title="Voice Input">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <button class="tool-btn" id="formatCodeBtn" title="Format Code">
-                        <i class="fas fa-code"></i>
-                    </button>
+            
+            <div class="input-container">
+                <div class="model-selector">
+                    <select id="modelSelect">
+                        <option value="deepseek-chat">DeepSeek Chat</option>
+                        <option value="deepseek-coder">DeepSeek Coder</option>
+                        <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                    </select>
                 </div>
-                
                 <div class="input-wrapper">
                     <textarea 
                         id="messageInput" 
                         placeholder="Type your message here... (Shift+Enter for new line, Enter to send)"
-                        rows="3"
+                        rows="1"
                     ></textarea>
-                    
-                    <div class="input-actions">
-                        <button class="btn-stop" id="stopBtn" title="Stop Generating" style="display: none;">
-                            <i class="fas fa-stop"></i>
-                        </button>
-                        <button class="btn-send" id="sendBtn">
-                            <i class="fas fa-paper-plane"></i>
-                            <span>Send</span>
-                        </button>
-                    </div>
+                    <button id="sendButton">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
-                
                 <div class="input-footer">
-                    <div class="memory-info">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Each conversation is saved separately in JSON format</span>
-                    </div>
-                    <div class="character-count">
-                        <span id="charCount">0</span> characters
+                    <div class="typing-indicator" id="typingIndicator">
+                        <i class="fas fa-circle"></i>
+                        <i class="fas fa-circle"></i>
+                        <i class="fas fa-circle"></i>
+                        <span>WormGPT is typing...</span>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <button class="action-btn" id="scrollTopBtn" title="Scroll to Top">
-                <i class="fas fa-arrow-up"></i>
-            </button>
-            <button class="action-btn" id="scrollBottomBtn" title="Scroll to Bottom">
-                <i class="fas fa-arrow-down"></i>
-            </button>
-            <button class="action-btn" id="regenerateBtn" title="Regenerate Last">
-                <i class="fas fa-redo"></i>
-            </button>
-            <button class="action-btn" id="themeToggleBtn" title="Toggle Theme">
-                <i class="fas fa-moon"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="close-btn" id="closeSettings">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="settings-section">
-                    <h3><i class="fas fa-key"></i> API Configuration</h3>
-                    
-                    <div class="form-group">
-                        <label for="apiKeyInput">DeepSeek API Key</label>
-                        <div class="input-with-icon">
-                            <input type="password" id="apiKeyInput" placeholder="Enter your API key">
-                            <button class="btn-eye" id="toggleApiKey">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <small class="form-text">Get your API key from <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek Platform</a></small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="temperatureInput">Temperature: <span id="tempValue">0.7</span></label>
-                        <input type="range" id="temperatureInput" min="0" max="1" step="0.1" value="0.7">
-                        <div class="range-labels">
-                            <span>More Focused</span>
-                            <span>Balanced</span>
-                            <span>More Creative</span>
-                        </div>
-                    </div>
+        
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cog"></i> Settings</h2>
+                    <button class="close-btn" id="closeSettingsBtn">&times;</button>
                 </div>
-                
-                <div class="settings-section">
-                    <h3><i class="fas fa-language"></i> Language</h3>
-                    <select id="languageSelect" class="form-select">
-                        <option value="English">English</option>
-                        <option value="Bengali">Bengali</option>
-                        <option value="Hindi">Hindi</option>
-                        <option value="Arabic">Arabic</option>
-                        <option value="Spanish">Spanish</option>
-                    </select>
-                </div>
-                
-                <div class="settings-section">
-                    <h3><i class="fas fa-paint-brush"></i> Appearance</h3>
-                    <div class="theme-options">
-                        <button class="theme-option active" data-theme="dark">
-                            <i class="fas fa-moon"></i>
-                            <span>Dark</span>
-                        </button>
-                        <button class="theme-option" data-theme="light">
-                            <i class="fas fa-sun"></i>
-                            <span>Light</span>
-                        </button>
-                        <button class="theme-option" data-theme="blue">
-                            <i class="fas fa-water"></i>
-                            <span>Ocean</span>
-                        </button>
+                <div class="modal-body">
+                    <div class="setting-item">
+                        <label>API Key:</label>
+                        <input type="password" id="apiKeyInput" placeholder="Enter your DeepSeek API key">
                     </div>
-                </div>
-                
-                <div class="settings-section">
-                    <h3><i class="fas fa-history"></i> Memory Settings</h3>
-                    <div class="form-group">
-                        <label for="maxHistoryInput">Max Messages to Remember: <span id="maxHistoryValue">20</span></label>
-                        <input type="range" id="maxHistoryInput" min="5" max="50" step="5" value="20">
+                    <div class="setting-item">
+                        <label>Temperature:</label>
+                        <input type="range" id="temperatureInput" min="0" max="2" step="0.1" value="0.7">
+                        <span id="temperatureValue">0.7</span>
                     </div>
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="btn-secondary" id="cancelSettings">Cancel</button>
-                    <button class="btn-primary" id="saveSettings">Save Settings</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Conversation Manager Modal -->
-    <div class="modal" id="conversationModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Manage Conversations</h2>
-                <button class="close-btn" id="closeConversationModal">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="conversations-manager">
-                    <div class="conversation-actions">
-                        <button class="btn-danger" id="deleteSelectedBtn">
-                            <i class="fas fa-trash"></i> Delete Selected
+                    <div class="setting-item">
+                        <label>Max Tokens:</label>
+                        <input type="number" id="maxTokensInput" min="100" max="8192" value="4096">
+                    </div>
+                    <div class="setting-item">
+                        <label>Dark Mode:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="darkModeToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="saveSettingsBtn" class="btn-primary">
+                            <i class="fas fa-save"></i> Save Settings
                         </button>
-                        <button class="btn-secondary" id="refreshConversationsBtn">
-                            <i class="fas fa-sync"></i> Refresh
+                        <button id="closeSettingsBtn2" class="btn-secondary">
+                            Cancel
                         </button>
-                    </div>
-                    
-                    <div class="conversations-grid" id="conversationsGrid">
-                        <!-- Conversations will be loaded here -->
-                    </div>
-                    
-                    <div class="no-conversations" id="noConversations" style="display: none;">
-                        <i class="fas fa-comment-slash"></i>
-                        <p>No conversations found</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Toast Container -->
-    <div id="toastContainer"></div>
-
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-    <script src="app.js"></script>
+    
+    <script src="script.js"></script>
 </body>
 </html>
