@@ -3,255 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WormGPT - DeepSeek AI Chat</title>
+    <title>WormGPT - AI Assistant</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/css.min.js"></script>
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <div class="sidebar">
             <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fas fa-brain"></i>
-                    <h1>WormGPT</h1>
-                </div>
-                <span class="version">Pro v3.0</span>
+                <h1><i class="fas fa-robot"></i> WormGPT</h1>
+                <p class="subtitle">DeepSeek AI Assistant</p>
             </div>
-
-            <button class="new-chat-btn" id="newChatBtn">
-                <i class="fas fa-plus"></i>
-                New Chat
-            </button>
-
-            <div class="conversations-section">
-                <h3><i class="fas fa-history"></i> History</h3>
-                <div class="conversations-list" id="conversationsList">
-                    <!-- Conversations will be loaded here -->
-                </div>
-            </div>
-
-            <div class="user-section">
-                <div class="user-info">
-                    <div class="avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="user-details">
-                        <span class="username">User</span>
-                        <span class="user-status">Online</span>
-                    </div>
-                </div>
-                <button class="settings-btn" id="settingsBtn">
-                    <i class="fas fa-cog"></i>
+            
+            <div class="new-chat-btn">
+                <button id="newChatBtn">
+                    <i class="fas fa-plus"></i> New Chat
                 </button>
             </div>
-        </aside>
-
+            
+            <div class="conversations-list" id="conversationsList">
+                <!-- Conversations will be loaded here -->
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <i class="fas fa-user"></i>
+                    <span>User</span>
+                </div>
+                <button id="settingsBtn" class="settings-btn">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+            </div>
+        </div>
+        
         <!-- Main Chat Area -->
-        <main class="main-content">
-            <!-- Chat Header -->
-            <header class="chat-header">
-                <div class="chat-info">
-                    <h2 id="chatTitle">New Chat</h2>
-                    <div class="chat-stats">
-                        <span class="stat" id="messageCount">Messages: 0</span>
-                        <span class="stat" id="tokenCount">Tokens: 0</span>
-                        <span class="stat" id="modelInfo">Model: DeepSeek</span>
-                    </div>
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="chat-title" id="chatTitle">
+                    <i class="fas fa-comments"></i> New Conversation
                 </div>
                 <div class="chat-actions">
-                    <button class="action-btn" id="clearChatBtn" title="Clear Chat">
+                    <button id="clearChatBtn" title="Clear Chat">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <button class="action-btn" id="exportChatBtn" title="Export Chat">
+                    <button id="exportChatBtn" title="Export Chat">
                         <i class="fas fa-download"></i>
                     </button>
-                    <button class="action-btn" id="settingsMenuBtn" title="Settings">
-                        <i class="fas fa-sliders-h"></i>
-                    </button>
                 </div>
-            </header>
-
-            <!-- Chat Messages Container -->
-            <div class="chat-container" id="chatContainer">
-                <!-- Welcome Message -->
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <!-- Messages will appear here -->
                 <div class="welcome-message">
-                    <div class="welcome-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h2>Welcome to WormGPT</h2>
-                    <p>DeepSeek Pro AI with 128K token context window</p>
+                    <h2><i class="fas fa-robot"></i> Welcome to WormGPT</h2>
+                    <p>Start a conversation by typing your message below.</p>
                     <div class="features">
                         <div class="feature">
                             <i class="fas fa-bolt"></i>
-                            <span>Extreme Token Limit</span>
+                            <span>Real-time Streaming</span>
                         </div>
                         <div class="feature">
                             <i class="fas fa-code"></i>
-                            <span>Big Projects Support</span>
+                            <span>Code Highlighting</span>
                         </div>
                         <div class="feature">
-                            <i class="fas fa-brain"></i>
-                            <span>Smart Context Management</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Messages will be appended here -->
-                <div id="messagesContainer"></div>
-
-                <!-- Streaming Message -->
-                <div class="message assistant streaming" id="streamingMessage" style="display: none;">
-                    <div class="message-avatar">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="message-content">
-                        <div class="typing-indicator">
-                            <span></span>
-                            <span></span>
-                            <span></span>
+                            <i class="fas fa-history"></i>
+                            <span>Conversation Memory</span>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Input Area -->
-            <div class="input-area">
-                <div class="input-container">
-                    <div class="input-actions">
-                        <button class="input-action-btn" id="attachBtn" title="Attach File">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <button class="input-action-btn" id="micBtn" title="Voice Input">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                    </div>
+            
+            <div class="input-container">
+                <div class="model-selector">
+                    <select id="modelSelect">
+                        <option value="deepseek-chat">DeepSeek Chat</option>
+                        <option value="deepseek-coder">DeepSeek Coder</option>
+                        <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                    </select>
+                </div>
+                <div class="input-wrapper">
                     <textarea 
                         id="messageInput" 
-                        placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
+                        placeholder="Type your message here... (Shift+Enter for new line, Enter to send)"
                         rows="1"
                     ></textarea>
-                    <button class="send-btn" id="sendBtn">
+                    <button id="sendButton">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
                 <div class="input-footer">
-                    <div class="model-selector">
-                        <select id="modelSelect">
-                            <option value="deepseek-chat">DeepSeek Chat</option>
-                            <option value="deepseek-coder">DeepSeek Coder</option>
-                            <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                        </select>
-                    </div>
-                    <div class="input-info">
-                        <span id="charCount">0 chars</span>
-                        <span id="estTokens">0 tokens</span>
+                    <div class="typing-indicator" id="typingIndicator">
+                        <i class="fas fa-circle"></i>
+                        <i class="fas fa-circle"></i>
+                        <i class="fas fa-circle"></i>
+                        <span>WormGPT is typing...</span>
                     </div>
                 </div>
             </div>
-        </main>
-
+        </div>
+        
         <!-- Settings Modal -->
         <div class="modal" id="settingsModal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3><i class="fas fa-cog"></i> Settings</h3>
-                    <button class="close-modal" id="closeSettings">&times;</button>
+                    <h2><i class="fas fa-cog"></i> Settings</h2>
+                    <button class="close-btn" id="closeSettingsBtn">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="settings-section">
-                        <h4><i class="fas fa-key"></i> API Configuration</h4>
-                        <div class="form-group">
-                            <label for="apiKey">API Key</label>
-                            <input type="password" id="apiKey" placeholder="Enter your DeepSeek API key">
-                        </div>
-                        <div class="form-group">
-                            <label for="baseUrl">Base URL</label>
-                            <input type="text" id="baseUrl" value="https://api.deepseek.com">
-                        </div>
+                    <div class="setting-item">
+                        <label>API Key:</label>
+                        <input type="password" id="apiKeyInput" placeholder="Enter your DeepSeek API key">
                     </div>
-
-                    <div class="settings-section">
-                        <h4><i class="fas fa-sliders-h"></i> Model Settings</h4>
-                        <div class="form-group">
-                            <label for="temperature">Temperature: <span id="tempValue">0.7</span></label>
-                            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
-                        </div>
-                        <div class="form-group">
-                            <label for="topP">Top P: <span id="topPValue">0.9</span></label>
-                            <input type="range" id="topP" min="0" max="1" step="0.05" value="0.9">
-                        </div>
+                    <div class="setting-item">
+                        <label>Temperature:</label>
+                        <input type="range" id="temperatureInput" min="0" max="2" step="0.1" value="0.7">
+                        <span id="temperatureValue">0.7</span>
                     </div>
-
-                    <div class="settings-section">
-                        <h4><i class="fas fa-tachometer-alt"></i> Performance</h4>
-                        <div class="form-group">
-                            <label for="contextWindow">Context Window: <span id="ctxValue">128000</span> tokens</label>
-                            <input type="range" id="contextWindow" min="32000" max="128000" step="8000" value="128000">
-                        </div>
-                        <div class="form-group">
-                            <label for="maxTokens">Max Output Tokens: <span id="maxTokensValue">64000</span></label>
-                            <input type="range" id="maxTokens" min="1000" max="64000" step="1000" value="64000">
-                        </div>
+                    <div class="setting-item">
+                        <label>Max Tokens:</label>
+                        <input type="number" id="maxTokensInput" min="100" max="8192" value="4096">
                     </div>
-
-                    <div class="settings-section">
-                        <h4><i class="fas fa-paint-brush"></i> Appearance</h4>
-                        <div class="form-group">
-                            <label for="themeSelect">Theme</label>
-                            <select id="themeSelect">
-                                <option value="dark">Dark Mode</option>
-                                <option value="light">Light Mode</option>
-                                <option value="auto">Auto</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="autoSave" checked>
-                                Auto Save Conversations
-                            </label>
-                        </div>
+                    <div class="setting-item">
+                        <label>Dark Mode:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="darkModeToggle" checked>
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn-secondary" id="cancelSettings">Cancel</button>
-                    <button class="btn-primary" id="saveSettings">Save Settings</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Export Modal -->
-        <div class="modal" id="exportModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-download"></i> Export Conversation</h3>
-                    <button class="close-modal" id="closeExport">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Select export format:</p>
-                    <div class="export-options">
-                        <button class="export-option" data-format="json">
-                            <i class="fas fa-code"></i>
-                            <span>JSON</span>
+                    <div class="modal-actions">
+                        <button id="saveSettingsBtn" class="btn-primary">
+                            <i class="fas fa-save"></i> Save Settings
                         </button>
-                        <button class="export-option" data-format="txt">
-                            <i class="fas fa-file-alt"></i>
-                            <span>Text</span>
-                        </button>
-                        <button class="export-option" data-format="md">
-                            <i class="fab fa-markdown"></i>
-                            <span>Markdown</span>
+                        <button id="closeSettingsBtn2" class="btn-secondary">
+                            Cancel
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Toast Notification -->
-        <div class="toast" id="toast"></div>
     </div>
-
+    
     <script src="script.js"></script>
 </body>
 </html>
