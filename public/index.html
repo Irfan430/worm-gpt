@@ -2,10 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- FIX: Mobile + iPhone safe viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <title>WormGPT - AI Assistant</title>
+
+    <!-- CSS -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Highlight.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
@@ -14,25 +23,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/html.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/css.min.js"></script>
 </head>
+
 <body>
+    <!-- APP CONTAINER -->
     <div class="app-container">
-        <!-- Sidebar -->
+
+        <!-- ================= SIDEBAR ================= -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1><i class="fas fa-robot"></i> WormGPT</h1>
                 <p class="subtitle">DeepSeek AI Assistant</p>
             </div>
-            
+
             <div class="new-chat-btn">
                 <button id="newChatBtn">
                     <i class="fas fa-plus"></i> New Chat
                 </button>
             </div>
-            
+
             <div class="conversations-list" id="conversationsList">
                 <!-- Conversations will be loaded here -->
             </div>
-            
+
             <div class="sidebar-footer">
                 <div class="user-info">
                     <i class="fas fa-user"></i>
@@ -43,9 +55,11 @@
                 </button>
             </div>
         </div>
-        
-        <!-- Main Chat Area -->
+
+        <!-- ================= MAIN CONTENT ================= -->
         <div class="main-content">
+
+            <!-- HEADER -->
             <div class="chat-header">
                 <div class="chat-title" id="chatTitle">
                     <i class="fas fa-comments"></i> New Conversation
@@ -59,12 +73,13 @@
                     </button>
                 </div>
             </div>
-            
+
+            <!-- MESSAGES -->
             <div class="messages-container" id="messagesContainer">
-                <!-- Messages will appear here -->
                 <div class="welcome-message">
                     <h2><i class="fas fa-robot"></i> Welcome to WormGPT</h2>
                     <p>Start a conversation by typing your message below.</p>
+
                     <div class="features">
                         <div class="feature">
                             <i class="fas fa-bolt"></i>
@@ -81,7 +96,8 @@
                     </div>
                 </div>
             </div>
-            
+
+            <!-- INPUT -->
             <div class="input-container">
                 <div class="model-selector">
                     <select id="modelSelect">
@@ -90,16 +106,22 @@
                         <option value="deepseek-reasoner">DeepSeek Reasoner</option>
                     </select>
                 </div>
+
                 <div class="input-wrapper">
-                    <textarea 
-                        id="messageInput" 
+                    <textarea
+                        id="messageInput"
                         placeholder="Type your message here... (Shift+Enter for new line, Enter to send)"
                         rows="1"
+                        autocomplete="off"
+                        autocapitalize="sentences"
+                        spellcheck="true"
                     ></textarea>
+
                     <button id="sendButton">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
+
                 <div class="input-footer">
                     <div class="typing-indicator" id="typingIndicator">
                         <i class="fas fa-circle"></i>
@@ -110,28 +132,32 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Settings Modal -->
+
+        <!-- ================= SETTINGS MODAL ================= -->
         <div class="modal" id="settingsModal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class="fas fa-cog"></i> Settings</h2>
                     <button class="close-btn" id="closeSettingsBtn">&times;</button>
                 </div>
+
                 <div class="modal-body">
                     <div class="setting-item">
                         <label>API Key:</label>
                         <input type="password" id="apiKeyInput" placeholder="Enter your DeepSeek API key">
                     </div>
+
                     <div class="setting-item">
                         <label>Temperature:</label>
                         <input type="range" id="temperatureInput" min="0" max="2" step="0.1" value="0.7">
                         <span id="temperatureValue">0.7</span>
                     </div>
+
                     <div class="setting-item">
                         <label>Max Tokens:</label>
                         <input type="number" id="maxTokensInput" min="100" max="8192" value="4096">
                     </div>
+
                     <div class="setting-item">
                         <label>Dark Mode:</label>
                         <label class="switch">
@@ -139,6 +165,7 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+
                     <div class="modal-actions">
                         <button id="saveSettingsBtn" class="btn-primary">
                             <i class="fas fa-save"></i> Save Settings
@@ -150,8 +177,17 @@
                 </div>
             </div>
         </div>
+
     </div>
-    
+
+    <!-- JS -->
     <script src="script.js"></script>
+
+    <!-- FIX: ensure highlight works after load -->
+    <script>
+        if (window.hljs) {
+            hljs.highlightAll();
+        }
+    </script>
 </body>
 </html>
