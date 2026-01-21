@@ -1,665 +1,647 @@
-class WormGPT {
-    constructor() {
-        this.currentConversationId = null;
-        this.isStreaming = false;
-        this.eventSource = null;
-        this.config = {};
-        this.initialize();
-    }
+// DOM Elements
+const messageInput = document.getElementById('messageInput');
+const sendButton = document.getElementById('sendButton');
+const messagesContainer = document.getElementById('messagesContainer');
+const newChatBtn = document.getElementById('newChatBtn');
+const conversationsList = document.getElementById('conversationsList');
+const modelSelect = document.getElementById('modelSelect');
+const settingsModal = document.getElementById('settingsModal');
+const settingsBtn = document.getElementById('settingsBtn');
+const closeSettingsBtns = document.querySelectorAll('.close-btn, #closeSettingsBtn2');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const temperatureInput = document.getElementById('temperatureInput');
+const temperatureValue = document.getElementById('temperatureValue');
+const maxTokensInput = document.getElementById('maxTokensInput');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const typingIndicator = document.getElementById('typingIndicator');
+const clearChatBtn = document.getElementById('clearChatBtn');
+const exportChatBtn = document.getElementById('exportChatBtn');
+const chatTitle = document.getElementById('chatTitle');
 
-    async initialize() {
-        // Load configuration
-        await this.loadConfig();
-        
-        // Load conversations
-        await this.loadConversations();
-        
-        // Setup event listeners
-        this.setupEventListeners();
-        
-        // Auto-resize textarea
-        this.setupTextareaAutoResize();
-        
-        // Show welcome message
-        this.updateChatTitle('New Chat');
-        
-        // Update token count
-        this.updateTokenCount();
-    }
+// Global Variables
+let currentConversationId = null;
+let isStreaming = false;
+let config = {};
 
-    async loadConfig() {
-        try {
-            const response = await fetch('/api/config');
-            this.config = await response.json();
-            
-            // Update UI with config
-            document.getElementById('apiKey').value = this.config.api_key || '';
-            document.getElementById('baseUrl').value = this.config.base_url || 'https://api.deepseek.com';
-            document.getElementById('temperature').value = this.config.temperature || 0.7;
-            document.getElementById('tempValue').textContent = this.config.temperature || 0.7;
-            document.getElementById('topP').value = this.config.top_p || 0.9;
-            document.getElementById('topPValue').textContent = this.config.top_p || 0.9;
-            document.getElementById('contextWindow').value = this.config.context_window || 128000;
-            document.getElementById('ctxValue').textContent = this.config.context_window || 128000;
-            document.getElementById('maxTokens').value = this.config.max_output_tokens || 64000;
-            document.getElementById('maxTokensValue').textContent = this.config.max_output_tokens || 64000;
-            document.getElementById('modelSelect').value = this.config.model || 'deepseek-chat';
-            document.getElementById('themeSelect').value = this.config.dark_mode ? 'dark' : 'light';
-            document.getElementById('autoSave').checked = this.config.auto_save !== false;
-            
-            // Apply theme
-            this.applyTheme(this.config.dark_mode ? 'dark' : 'light');
-            
-            // Update model info
-            document.getElementById('modelInfo').textContent = `Model: ${this.config.model || 'DeepSeek Chat'}`;
-            
-        } catch (error) {
-            console.error('Failed to load config:', error);
-        }
-    }
-
-    async loadConversations() {
-        try {
-            const response = await fetch('/api/conversations');
-            const conversations = await response.json();
-            this.renderConversations(conversations);
-        } catch (error) {
-            console.error('Failed to load conversations:', error);
-        }
-    }
-
-    renderConversations(conversations) {
-        const container = document.getElementById('conversationsList');
-        container.innerHTML = '';
-        
-        conversations.forEach(conv => {
-            const date = new Date(conv.updated_at);
-            const timeString = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            const convElement = document.createElement('div');
-            convElement.className = 'conversation-item';
-            convElement.dataset.id = conv.id;
-            
-            convElement.innerHTML = `
-                <div class="conversation-icon">
-                    <i class="fas fa-comment"></i>
-                </div>
-                <div class="conversation-title" title="${conv.title}">
-                    ${conv.title}
-                </div>
-                <div class="conversation-time">
-                    ${timeString}
-                </div>
-            `;
-            
-            convElement.addEventListener('click', () => this.loadConversation(conv.id));
-            container.appendChild(convElement);
-        });
-    }
-
-    async loadConversation(conversationId) {
-        try {
-            const response = await fetch(`/api/conversation/${conversationId}`);
-            if (!response.ok) {
-                throw new Error('Conversation not found');
-            }
-            
-            const conversation = await response.json();
-            this.currentConversationId = conversationId;
-            
-            // Update chat title
-            this.updateChatTitle(conversation.title);
-            
-            // Clear messages container
-            const messagesContainer = document.getElementById('messagesContainer');
-            messagesContainer.innerHTML = '';
-            
-            // Render messages
-            conversation.messages.forEach(message => {
-                this.renderMessage(message);
-            });
-            
-            // Update stats
-            document.getElementById('messageCount').textContent = `Messages: ${conversation.messages.length}`;
-            document.getElementById('tokenCount').textContent = `Tokens: ${conversation.token_count || 0}`;
-            
-            // Mark as active in sidebar
-            document.querySelectorAll('.conversation-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.id === conversationId) {
-                    item.classList.add('active');
-                }
-            });
-            
-            // Scroll to bottom
-            this.scrollToBottom();
-            
-        } catch (error) {
-            console.error('Failed to load conversation:', error);
-            this.showToast('Failed to load conversation', 'error');
-        }
-    }
-
-    async sendMessage(message) {
-        if (!message.trim() || this.isStreaming) return;
-        
-        // Clear welcome message if this is the first message
-        const welcomeMessage = document.querySelector('.welcome-message');
-        if (welcomeMessage) {
-            welcomeMessage.style.display = 'none';
-        }
-        
-        // Create new conversation if none exists
-        if (!this.currentConversationId) {
-            await this.createNewConversation();
-        }
-        
-        // Render user message
-        this.renderMessage({
-            role: 'user',
-            content: message,
-            timestamp: new Date().toISOString()
-        });
-        
-        // Clear input
-        document.getElementById('messageInput').value = '';
-        this.updateCharCount();
-        
-        // Show typing indicator
-        this.showTypingIndicator();
-        
-        // Get selected model
-        const model = document.getElementById('modelSelect').value;
-        
-        // Send message to API
-        this.isStreaming = true;
-        this.disableInput();
-        
-        try {
-            const response = await fetch(`/api/chat/stream?message=${encodeURIComponent(message)}&conversation_id=${this.currentConversationId}&model=${model}`);
-            
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
-            
-            // Hide typing indicator
-            this.hideTypingIndicator();
-            
-            // Create assistant message element
-            const messageId = `msg_${Date.now()}`;
-            const assistantMessage = this.createAssistantMessageElement(messageId);
-            
-            // Process stream
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullResponse = '';
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const dataStr = line.slice(6);
-                        if (dataStr === '[DONE]') {
-                            break;
-                        }
-                        
-                        try {
-                            const data = JSON.parse(dataStr);
-                            
-                            if (data.error) {
-                                assistantMessage.querySelector('.message-content').innerHTML = `
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                        ${data.error}
-                                    </div>
-                                `;
-                                break;
-                            }
-                            
-                            if (data.content) {
-                                fullResponse += data.content;
-                                this.updateMessageContent(messageId, fullResponse);
-                            }
-                        } catch (e) {
-                            console.error('Failed to parse SSE data:', e);
-                        }
-                    }
-                }
-            }
-            
-            // Add timestamp
-            const timestamp = new Date().toISOString();
-            assistantMessage.dataset.timestamp = timestamp;
-            
-            // Update conversation stats
-            await this.updateConversationStats();
-            
-        } catch (error) {
-            console.error('Failed to send message:', error);
-            this.hideTypingIndicator();
-            this.renderMessage({
-                role: 'assistant',
-                content: `Error: ${error.message}`,
-                timestamp: new Date().toISOString()
-            });
-        } finally {
-            this.isStreaming = false;
-            this.enableInput();
-            this.scrollToBottom();
-        }
-    }
-
-    createAssistantMessageElement(id) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        const messageDiv = document.createElement('div');
-        messageDiv.id = id;
-        messageDiv.className = 'message assistant';
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-text"></div>
-                <div class="message-timestamp"></div>
-            </div>
-        `;
-        messagesContainer.appendChild(messageDiv);
-        return messageDiv;
-    }
-
-    updateMessageContent(messageId, content) {
-        const messageElement = document.getElementById(messageId);
-        if (!messageElement) return;
-        
-        const messageText = messageElement.querySelector('.message-text');
-        const messageTimestamp = messageElement.querySelector('.message-timestamp');
-        
-        // Format code blocks
-        let formattedContent = this.formatMessageContent(content);
-        messageText.innerHTML = formattedContent;
-        
-        // Update timestamp
-        if (messageElement.dataset.timestamp) {
-            const date = new Date(messageElement.dataset.timestamp);
-            messageTimestamp.textContent = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }
-        
-        // Highlight code blocks
-        this.highlightCodeBlocks(messageElement);
-        
-        // Scroll to this message
-        messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    formatMessageContent(content) {
-        // Convert markdown-like syntax to HTML
-        let formatted = content
-            .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-            .replace(/\n/g, '<br>');
-        
-        return formatted;
-    }
-
-    highlightCodeBlocks(messageElement) {
-        const codeBlocks = messageElement.querySelectorAll('pre code');
-        codeBlocks.forEach(block => {
-            // Simple syntax highlighting
-            const lang = block.className.replace('language-', '');
-            if (lang) {
-                block.classList.add(lang);
-            }
-        });
-    }
-
-    renderMessage(message) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${message.role}`;
-        
-        const date = new Date(message.timestamp);
-        const timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        let content = message.content;
-        if (message.role === 'user') {
-            content = content.replace(/\n/g, '<br>');
-        } else {
-            content = this.formatMessageContent(content);
-        }
-        
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas ${message.role === 'user' ? 'fa-user' : 'fa-robot'}"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-text">${content}</div>
-                <div class="message-timestamp">${timeString}</div>
-            </div>
-        `;
-        
-        messagesContainer.appendChild(messageDiv);
-        
-        // Highlight code blocks for assistant messages
-        if (message.role === 'assistant') {
-            this.highlightCodeBlocks(messageDiv);
-        }
-        
-        this.scrollToBottom();
-    }
-
-    async createNewConversation() {
-        try {
-            const response = await fetch(`/api/chat/stream?message=${encodeURIComponent('New conversation')}&conversation_id=`, {
-                method: 'GET'
-            });
-            
-            // Extract conversation ID from URL
-            const urlParams = new URLSearchParams(response.url.split('?')[1]);
-            this.currentConversationId = urlParams.get('conversation_id');
-            
-            if (this.currentConversationId) {
-                await this.loadConversations();
-                this.updateChatTitle('New Chat');
-                this.clearChatMessages();
-                this.showToast('New conversation created', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to create conversation:', error);
-        }
-    }
-
-    clearChatMessages() {
-        const messagesContainer = document.getElementById('messagesContainer');
-        messagesContainer.innerHTML = '';
-        
-        // Show welcome message
-        const welcomeMessage = document.querySelector('.welcome-message');
-        if (welcomeMessage) {
-            welcomeMessage.style.display = 'block';
-        }
-        
-        // Update stats
-        document.getElementById('messageCount').textContent = 'Messages: 0';
-        document.getElementById('tokenCount').textContent = 'Tokens: 0';
-    }
-
-    showTypingIndicator() {
-        const streamingMessage = document.getElementById('streamingMessage');
-        streamingMessage.style.display = 'flex';
-        this.scrollToBottom();
-    }
-
-    hideTypingIndicator() {
-        const streamingMessage = document.getElementById('streamingMessage');
-        streamingMessage.style.display = 'none';
-    }
-
-    disableInput() {
-        document.getElementById('messageInput').disabled = true;
-        document.getElementById('sendBtn').disabled = true;
-    }
-
-    enableInput() {
-        document.getElementById('messageInput').disabled = false;
-        document.getElementById('sendBtn').disabled = false;
-        document.getElementById('messageInput').focus();
-    }
-
-    scrollToBottom() {
-        const chatContainer = document.getElementById('chatContainer');
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    updateChatTitle(title) {
-        document.getElementById('chatTitle').textContent = title || 'New Chat';
-    }
-
-    async updateConversationStats() {
-        if (!this.currentConversationId) return;
-        
-        try {
-            const response = await fetch(`/api/conversation/${this.currentConversationId}`);
-            const conversation = await response.json();
-            
-            document.getElementById('messageCount').textContent = `Messages: ${conversation.messages.length}`;
-            document.getElementById('tokenCount').textContent = `Tokens: ${conversation.token_count || 0}`;
-        } catch (error) {
-            console.error('Failed to update stats:', error);
-        }
-    }
-
-    updateCharCount() {
-        const textarea = document.getElementById('messageInput');
-        const charCount = document.getElementById('charCount');
-        const estTokens = document.getElementById('estTokens');
-        
-        const chars = textarea.value.length;
-        const tokens = Math.ceil(chars / 4);
-        
-        charCount.textContent = `${chars} chars`;
-        estTokens.textContent = `${tokens} tokens`;
-    }
-
-    setupTextareaAutoResize() {
-        const textarea = document.getElementById('messageInput');
-        
-        textarea.addEventListener('input', () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-            this.updateCharCount();
-        });
-        
-        textarea.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSendMessage();
-            }
-        });
-    }
-
-    handleSendMessage() {
-        const messageInput = document.getElementById('messageInput');
-        const message = messageInput.value.trim();
-        
-        if (message) {
-            this.sendMessage(message);
-        }
-    }
-
-    setupEventListeners() {
-        // Send button
-        document.getElementById('sendBtn').addEventListener('click', () => this.handleSendMessage());
-        
-        // New chat button
-        document.getElementById('newChatBtn').addEventListener('click', () => this.createNewConversation());
-        
-        // Clear chat button
-        document.getElementById('clearChatBtn').addEventListener('click', () => {
-            if (confirm('Clear all messages in this chat?')) {
-                this.clearChatMessages();
-            }
-        });
-        
-        // Export chat button
-        document.getElementById('exportChatBtn').addEventListener('click', () => {
-            this.showExportModal();
-        });
-        
-        // Settings buttons
-        document.getElementById('settingsBtn').addEventListener('click', () => this.showSettingsModal());
-        document.getElementById('settingsMenuBtn').addEventListener('click', () => this.showSettingsModal());
-        
-        // Settings modal
-        document.getElementById('closeSettings').addEventListener('click', () => this.hideSettingsModal());
-        document.getElementById('cancelSettings').addEventListener('click', () => this.hideSettingsModal());
-        document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
-        
-        // Export modal
-        document.getElementById('closeExport').addEventListener('click', () => this.hideExportModal());
-        
-        // Range inputs
-        document.getElementById('temperature').addEventListener('input', (e) => {
-            document.getElementById('tempValue').textContent = e.target.value;
-        });
-        
-        document.getElementById('topP').addEventListener('input', (e) => {
-            document.getElementById('topPValue').textContent = e.target.value;
-        });
-        
-        document.getElementById('contextWindow').addEventListener('input', (e) => {
-            document.getElementById('ctxValue').textContent = e.target.value;
-        });
-        
-        document.getElementById('maxTokens').addEventListener('input', (e) => {
-            document.getElementById('maxTokensValue').textContent = e.target.value;
-        });
-        
-        // Theme selector
-        document.getElementById('themeSelect').addEventListener('change', (e) => {
-            this.applyTheme(e.target.value);
-        });
-        
-        // Export options
-        document.querySelectorAll('.export-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                const format = e.currentTarget.dataset.format;
-                this.exportConversation(format);
-            });
-        });
-        
-        // Model selector
-        document.getElementById('modelSelect').addEventListener('change', (e) => {
-            this.config.model = e.target.value;
-            document.getElementById('modelInfo').textContent = `Model: ${e.target.options[e.target.selectedIndex].text}`;
-        });
-    }
-
-    showSettingsModal() {
-        document.getElementById('settingsModal').classList.add('active');
-    }
-
-    hideSettingsModal() {
-        document.getElementById('settingsModal').classList.remove('active');
-    }
-
-    async saveSettings() {
-        const settings = {
-            api_key: document.getElementById('apiKey').value,
-            base_url: document.getElementById('baseUrl').value,
-            temperature: parseFloat(document.getElementById('temperature').value),
-            top_p: parseFloat(document.getElementById('topP').value),
-            context_window: parseInt(document.getElementById('contextWindow').value),
-            max_output_tokens: parseInt(document.getElementById('maxTokens').value),
-            model: document.getElementById('modelSelect').value,
-            dark_mode: document.getElementById('themeSelect').value === 'dark',
-            auto_save: document.getElementById('autoSave').checked
-        };
-        
-        try {
-            const response = await fetch('/api/update_config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(settings)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                await this.loadConfig();
-                this.hideSettingsModal();
-                this.showToast('Settings saved successfully', 'success');
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            this.showToast(`Failed to save settings: ${error.message}`, 'error');
-        }
-    }
-
-    showExportModal() {
-        document.getElementById('exportModal').classList.add('active');
-    }
-
-    hideExportModal() {
-        document.getElementById('exportModal').classList.remove('active');
-    }
-
-    async exportConversation(format) {
-        if (!this.currentConversationId) {
-            this.showToast('No conversation to export', 'warning');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/export/${this.currentConversationId}?format=${format}`);
-            
-            if (!response.ok) {
-                throw new Error('Export failed');
-            }
-            
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `conversation_${this.currentConversationId}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            this.hideExportModal();
-            this.showToast('Conversation exported successfully', 'success');
-            
-        } catch (error) {
-            console.error('Export failed:', error);
-            this.showToast('Export failed', 'error');
-        }
-    }
-
-    applyTheme(theme) {
-        if (theme === 'auto') {
-            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        
-        document.body.classList.toggle('light-mode', theme === 'light');
-        document.body.classList.toggle('dark-mode', theme === 'dark');
-    }
-
-    showToast(message, type = 'info') {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = 'toast';
-        toast.classList.add(type);
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-
-    // Estimate tokens (rough estimation)
-    estimateTokens(text) {
-        return Math.ceil(text.length / 4);
+// Initialize the application
+async function init() {
+    loadConfig();
+    await loadConversations();
+    setupEventListeners();
+    updateUI();
+    
+    // Check for existing conversation in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('conversation');
+    if (conversationId) {
+        await loadConversation(conversationId);
     }
 }
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.wormGPT = new WormGPT();
-});
+// Load configuration from server
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/config');
+        config = await response.json();
+        
+        // Update UI with config
+        if (config.api_key) {
+            apiKeyInput.value = config.api_key;
+        }
+        if (config.temperature) {
+            temperatureInput.value = config.temperature;
+            temperatureValue.textContent = config.temperature;
+        }
+        if (config.max_tokens) {
+            maxTokensInput.value = config.max_tokens;
+        }
+        if (config.model) {
+            modelSelect.value = config.model;
+        }
+        if (config.dark_mode !== undefined) {
+            darkModeToggle.checked = config.dark_mode;
+            document.body.classList.toggle('light-mode', !config.dark_mode);
+        }
+    } catch (error) {
+        console.error('Failed to load config:', error);
+        showError('Failed to load configuration');
+    }
+}
 
-// Auto-focus message input
-document.addEventListener('click', () => {
-    document.getElementById('messageInput').focus();
-});
+// Save configuration to server
+async function saveConfig() {
+    try {
+        config.api_key = apiKeyInput.value;
+        config.temperature = parseFloat(temperatureInput.value);
+        config.max_tokens = parseInt(maxTokensInput.value);
+        config.model = modelSelect.value;
+        config.dark_mode = darkModeToggle.checked;
+        
+        const response = await fetch('/api/update_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showNotification('Settings saved successfully!');
+            settingsModal.classList.remove('show');
+        } else {
+            throw new Error(result.error || 'Failed to save settings');
+        }
+    } catch (error) {
+        console.error('Failed to save config:', error);
+        showError('Failed to save settings: ' + error.message);
+    }
+}
+
+// Load conversations from server
+async function loadConversations() {
+    try {
+        const response = await fetch('/api/conversations');
+        const conversations = await response.json();
+        
+        conversationsList.innerHTML = '';
+        conversations.forEach(conv => {
+            const convElement = createConversationElement(conv);
+            conversationsList.appendChild(convElement);
+        });
+    } catch (error) {
+        console.error('Failed to load conversations:', error);
+        showError('Failed to load conversations');
+    }
+}
+
+// Create conversation list element
+function createConversationElement(conversation) {
+    const div = document.createElement('div');
+    div.className = 'conversation-item';
+    if (conversation.id === currentConversationId) {
+        div.classList.add('active');
+    }
+    
+    const title = conversation.title || 'Untitled Conversation';
+    const date = new Date(conversation.updated_at).toLocaleDateString();
+    
+    div.innerHTML = `
+        <div class="conversation-title">${escapeHtml(title)}</div>
+        <div class="conversation-meta">
+            <span>${conversation.message_count || 0} messages</span>
+            <span>${date}</span>
+        </div>
+    `;
+    
+    div.addEventListener('click', () => loadConversation(conversation.id));
+    return div;
+}
+
+// Load a specific conversation
+async function loadConversation(conversationId) {
+    try {
+        const response = await fetch(`/api/conversation/${conversationId}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                await createNewConversation();
+                return;
+            }
+            throw new Error('Failed to load conversation');
+        }
+        
+        const conversation = await response.json();
+        currentConversationId = conversation.id;
+        
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('conversation', conversationId);
+        window.history.pushState({}, '', url);
+        
+        // Update UI
+        chatTitle.innerHTML = `<i class="fas fa-comments"></i> ${escapeHtml(conversation.title)}`;
+        
+        // Clear and load messages
+        messagesContainer.innerHTML = '';
+        if (conversation.messages && conversation.messages.length > 0) {
+            conversation.messages.forEach(message => {
+                addMessageToUI(message, false);
+            });
+        } else {
+            showWelcomeMessage();
+        }
+        
+        // Update conversation list
+        await loadConversations();
+        scrollToBottom();
+    } catch (error) {
+        console.error('Failed to load conversation:', error);
+        showError('Failed to load conversation');
+    }
+}
+
+// Create new conversation
+async function createNewConversation() {
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                message: 'Hello',
+                model: modelSelect.value 
+            })
+        });
+        
+        const result = await response.json();
+        if (result.conversation_id) {
+            await loadConversation(result.conversation_id);
+        }
+    } catch (error) {
+        console.error('Failed to create conversation:', error);
+        showError('Failed to create new conversation');
+    }
+}
+
+// Send message to server
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message || isStreaming) return;
+    
+    // Add user message to UI
+    const userMessage = {
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+    };
+    addMessageToUI(userMessage, true);
+    
+    // Clear input
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    sendButton.disabled = true;
+    
+    // Show typing indicator
+    typingIndicator.style.display = 'flex';
+    isStreaming = true;
+    
+    try {
+        // Prepare URL for streaming
+        const params = new URLSearchParams({
+            message: message,
+            model: modelSelect.value
+        });
+        
+        if (currentConversationId) {
+            params.append('conversation_id', currentConversationId);
+        }
+        
+        const response = await fetch(`/api/chat/stream?${params}`);
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+        
+        // Process stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let assistantMessage = {
+            role: 'assistant',
+            content: '',
+            timestamp: new Date().toISOString()
+        };
+        
+        // Create assistant message element
+        const messageElement = createMessageElement(assistantMessage);
+        messagesContainer.appendChild(messageElement);
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    
+                    if (data === '[DONE]') {
+                        // Stream complete
+                        isStreaming = false;
+                        sendButton.disabled = false;
+                        typingIndicator.style.display = 'none';
+                        
+                        // Update conversation list
+                        await loadConversations();
+                        return;
+                    }
+                    
+                    try {
+                        const parsed = JSON.parse(data);
+                        
+                        if (parsed.error) {
+                            throw new Error(parsed.error);
+                        }
+                        
+                        if (parsed.content) {
+                            assistantMessage.content += parsed.content;
+                            updateMessageContent(messageElement, assistantMessage.content);
+                        }
+                    } catch (e) {
+                        // Skip parsing errors for partial JSON
+                    }
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        showError('Failed to send message: ' + error.message);
+        isStreaming = false;
+        sendButton.disabled = false;
+        typingIndicator.style.display = 'none';
+    }
+}
+
+// Add message to UI
+function addMessageToUI(message, isNew = false) {
+    const messageElement = createMessageElement(message);
+    messagesContainer.appendChild(messageElement);
+    
+    if (isNew) {
+        scrollToBottom();
+    }
+}
+
+// Create message element
+function createMessageElement(message) {
+    const div = document.createElement('div');
+    const isUser = message.role === 'user';
+    const time = new Date(message.timestamp).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    
+    div.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+    
+    if (isUser) {
+        div.innerHTML = `
+            <div class="message-content">
+                <div class="text-content">${formatMessageContent(message.content)}</div>
+            </div>
+        `;
+    } else {
+        div.innerHTML = `
+            <div class="message-header">
+                <div class="message-sender">
+                    <i class="fas fa-robot"></i>
+                    <span>WormGPT</span>
+                </div>
+                <div class="message-time">${time}</div>
+            </div>
+            <div class="message-content">
+                ${formatMessageContent(message.content)}
+            </div>
+        `;
+    }
+    
+    return div;
+}
+
+// Update message content (for streaming)
+function updateMessageContent(messageElement, content) {
+    const contentDiv = messageElement.querySelector('.message-content');
+    if (contentDiv) {
+        contentDiv.innerHTML = formatMessageContent(content);
+        highlightCodeBlocks(contentDiv);
+        scrollToBottom();
+    }
+}
+
+// Format message content with code highlighting
+function formatMessageContent(content) {
+    if (!content) return '';
+    
+    // Split by code blocks
+    const parts = content.split(/(```[\s\S]*?```)/g);
+    let result = '';
+    
+    parts.forEach(part => {
+        if (part.startsWith('```')) {
+            // Code block
+            const codeMatch = part.match(/^```(\w+)?\n([\s\S]*?)```$/);
+            if (codeMatch) {
+                const language = codeMatch[1] || 'text';
+                const code = codeMatch[2].trim();
+                
+                result += `
+                    <div class="code-block">
+                        <div class="code-header">
+                            <div class="code-language">
+                                <i class="fas fa-code"></i>
+                                <span>${escapeHtml(language)}</span>
+                            </div>
+                            <button class="copy-code-btn" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                        <pre><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>
+                    </div>
+                `;
+            }
+        } else {
+            // Regular text with markdown formatting
+            let text = escapeHtml(part);
+            
+            // Convert markdown to HTML
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            text = text.replace(/`(.*?)`/g, '<code>$1</code>');
+            text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+            text = text.replace(/\n\n/g, '</p><p>');
+            text = text.replace(/\n/g, '<br>');
+            
+            // Handle lists
+            text = text.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+            text = text.replace(/^\s*\d+\.\s+(.*)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+            
+            result += `<div class="text-content">${text}</div>`;
+        }
+    });
+    
+    return result;
+}
+
+// Highlight code blocks
+function highlightCodeBlocks(container) {
+    if (container) {
+        container.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    }
+}
+
+// Copy code to clipboard
+function copyCode(button) {
+    const codeBlock = button.closest('.code-block');
+    const code = codeBlock.querySelector('code').textContent;
+    
+    navigator.clipboard.writeText(code).then(() => {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i><span>Copied!</span>';
+        button.classList.add('copied');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+// Show welcome message
+function showWelcomeMessage() {
+    messagesContainer.innerHTML = `
+        <div class="welcome-message">
+            <h2><i class="fas fa-robot"></i> Welcome to WormGPT</h2>
+            <p>Start a conversation by typing your message below.</p>
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-bolt"></i>
+                    <span>Real-time Streaming</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-code"></i>
+                    <span>Code Highlighting</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-history"></i>
+                    <span>Conversation Memory</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Clear current chat
+function clearChat() {
+    if (currentConversationId && confirm('Are you sure you want to clear this chat?')) {
+        messagesContainer.innerHTML = '';
+        showWelcomeMessage();
+    }
+}
+
+// Export current chat
+async function exportChat() {
+    if (!currentConversationId) {
+        showError('No conversation to export');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/export/${currentConversationId}?format=txt`);
+        if (!response.ok) throw new Error('Failed to export conversation');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `wormgpt_conversation_${currentConversationId}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Failed to export chat:', error);
+        showError('Failed to export conversation');
+    }
+}
+
+// Update UI based on state
+function updateUI() {
+    sendButton.disabled = !messageInput.value.trim() || isStreaming;
+    
+    if (currentConversationId) {
+        clearChatBtn.style.display = 'flex';
+        exportChatBtn.style.display = 'flex';
+    } else {
+        clearChatBtn.style.display = 'none';
+        exportChatBtn.style.display = 'none';
+    }
+}
+
+// Scroll to bottom of messages
+function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Show notification
+function showNotification(message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Show error message
+function showError(message) {
+    showNotification(message);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Message input
+    messageInput.addEventListener('input', () => {
+        // Auto-resize textarea
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+        updateUI();
+    });
+    
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!isStreaming && messageInput.value.trim()) {
+                sendMessage();
+            }
+        }
+    });
+    
+    // Send button
+    sendButton.addEventListener('click', sendMessage);
+    
+    // New chat button
+    newChatBtn.addEventListener('click', async () => {
+        currentConversationId = null;
+        const url = new URL(window.location);
+        url.searchParams.delete('conversation');
+        window.history.pushState({}, '', url);
+        
+        chatTitle.innerHTML = '<i class="fas fa-comments"></i> New Conversation';
+        showWelcomeMessage();
+        await loadConversations();
+    });
+    
+    // Settings
+    settingsBtn.addEventListener('click', () => {
+        settingsModal.classList.add('show');
+    });
+    
+    closeSettingsBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            settingsModal.classList.remove('show');
+        });
+    });
+    
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.classList.remove('show');
+        }
+    });
+    
+    // Temperature slider
+    temperatureInput.addEventListener('input', () => {
+        temperatureValue.textContent = temperatureInput.value;
+    });
+    
+    // Save settings
+    saveSettingsBtn.addEventListener('click', saveConfig);
+    
+    // Dark mode toggle
+    darkModeToggle.addEventListener('change', () => {
+        document.body.classList.toggle('light-mode', !darkModeToggle.checked);
+    });
+    
+    // Clear and export buttons
+    clearChatBtn.addEventListener('click', clearChat);
+    exportChatBtn.addEventListener('click', exportChat);
+    
+    // Model select
+    modelSelect.addEventListener('change', () => {
+        config.model = modelSelect.value;
+    });
+    
+    // Handle back/forward navigation
+    window.addEventListener('popstate', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const conversationId = urlParams.get('conversation');
+        
+        if (conversationId) {
+            await loadConversation(conversationId);
+        } else {
+            currentConversationId = null;
+            chatTitle.innerHTML = '<i class="fas fa-comments"></i> New Conversation';
+            showWelcomeMessage();
+            await loadConversations();
+        }
+    });
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', init);
